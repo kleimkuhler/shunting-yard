@@ -1,0 +1,6 @@
+[package]
+name = "shunting-yard"
+version = "0.1.0"
+authors = ["Kevin Leimkuhler <kevin@kleimkuhler.com>"]
+
+[dependencies]
