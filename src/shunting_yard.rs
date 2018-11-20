@@ -14,22 +14,34 @@ trait TokenProperties {
     fn precedence(&self) -> i32;
 
     // Return the associativity of the current token
-    fn associatity(&self) -> Assoc {
+    fn associativity(&self) -> Assoc {
         Assoc::Left
     }
 }
 
-/// Run the [shunting yard algorithm] on a mathematical expression in infix
-/// notation to produce a result in [Reverse Polish Notation].
-///
-/// [shunting yard algorithm]: https://en.wikipedia.org/wiki/Shunting-yard_algorithm
-/// [Reverse Polish Notation]: https://en.wikipedia.org/wiki/Reverse_Polish_notation
-trait ShuntingYard<T, I>
+struct ShuntingYard<T, I>
 where
     T: TokenProperties,
-    I: Iterator<Item = T>,
+    I: IntoIterator<Item = T>,
 {
-    fn produce_postfix(&self, mut tokens: I) {
+    input: I,
+}
+
+impl<T, I> ShuntingYard<T, I>
+where
+    T: TokenProperties,
+    I: IntoIterator<Item = T>,
+{
+    fn new(input: I) -> Self {
+        Self { input }
+    }
+
+    /// Run the [shunting yard algorithm] on a mathematical expression in
+    /// infix notation to produce a result in RPN.
+    ///
+    /// [shunting yard algorithm]: https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+    fn produce_postfix(self) -> Queue<T> {
+        let mut tokens = self.input.into_iter();
         let mut parsed: Queue<T> = Queue::default();
         let mut operators: Stack<T> = Stack::default();
 
@@ -38,16 +50,17 @@ where
             // always enqueued.
             if token.precedence() == 0 {
                 parsed.enqueue(token);
-                break;
+                continue;
             }
 
             // While the operator stack is not empty, check if the current
             // operator should be pushed on to the top.
+            //
+            // When compared to `token` -- if the operator's stack
+            // precedence is greater, or it is equal and left associative,
+            // then remove it from the stack and enqueue it.
             while !operators.is_empty() {
-                // When compared to `token` -- if the operator's stack
-                // precedence is greater, or it is equal and left associative,
-                // then remove it from the stack and enqueue it.
-                if self.should_stack(&operators, token.precedence()) {
+                if Self::should_stack(&operators.peek(), token.precedence()) {
                     parsed.enqueue(operators.pop())
                 } else {
                     break;
@@ -61,13 +74,13 @@ where
         while !operators.is_empty() {
             parsed.enqueue(operators.pop())
         }
+
+        parsed
     }
 
-    // Helper -- determine is a operator should be stacked
-    fn should_stack(&self, operators: &Stack<T>, cur_prec: i32) -> bool {
-        let top_op = operators.peek();
-        return top_op.precedence() > cur_prec
-            || top_op.precedence() == cur_prec && top_op.associatity() == Assoc::Left;
+    fn should_stack(cur_top: &T, cur_prec: i32) -> bool {
+        cur_top.precedence() > cur_prec
+            || cur_top.precedence() == cur_prec && cur_top.associativity() == Assoc::Left
     }
 }
 
@@ -75,14 +88,15 @@ where
 mod tests {
     use super::*;
 
+    #[derive(Debug, PartialEq)]
     enum Value {
         Int(i64),
     }
 
+    #[derive(Debug, PartialEq)]
     enum Token {
         Value(Value),
 
-        Divide,
         Minus,
         Multiply,
         Plus,
@@ -90,37 +104,19 @@ mod tests {
 
     impl TokenProperties for Token {
         fn precedence(&self) -> i32 {
-            match self {
-                Token::Minus => 2,
-                Token::Multiply => 1,
-                Token::Plus => 2,
+            match &self {
+                Token::Minus => 1,
+                Token::Multiply => 2,
+                Token::Plus => 1,
 
                 _ => 0,
             }
         }
     }
 
-    struct Expression<T, I>
-    where
-        T: TokenProperties,
-        I: Iterator<Item = T>,
-    {
-        expression: I,
-    }
-
-    impl<T, I> Expression<T, I>
-    where
-        T: TokenProperties,
-        I: Iterator<Item = T>,
-    {
-        fn new(expression: I) -> Self {
-            Self { expression }
-        }
-    }
-
     #[test]
     fn test_shunting_yard() {
-        let mut tokens = &[
+        let input = vec![
             Token::Value(Value::Int(1)),
             Token::Plus,
             Token::Value(Value::Int(2)),
@@ -128,9 +124,18 @@ mod tests {
             Token::Value(Value::Int(3)),
             Token::Minus,
             Token::Value(Value::Int(4)),
-        ]
-            .iter();
+        ];
+        let output = vec![
+            Token::Value(Value::Int(1)),
+            Token::Value(Value::Int(2)),
+            Token::Value(Value::Int(3)),
+            Token::Multiply,
+            Token::Plus,
+            Token::Value(Value::Int(4)),
+            Token::Minus,
+        ];
+        let shunting_yard = ShuntingYard::new(input);
 
-        // let expression = Expression::new(tokens);
+        assert_eq!(shunting_yard.produce_postfix(), Queue::new(output))
     }
 }

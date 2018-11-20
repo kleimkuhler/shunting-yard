@@ -1,8 +1,7 @@
 /// A generic stack that wraps a `Vec<T>`.
 ///
-/// These methods wrap existing methods on `Vec<T>`, but limit how a stack can
-/// be used in the context of the shunting yard algorithm. The only reason
-/// this struct exists was for my own benefit of implementing.
+/// These methods wrap existing methods on `Vec<T>`. The only reason this
+/// struct exists was for my own benefit of implementing.
 pub struct Stack<T>(Vec<T>);
 
 impl<T> Default for Stack<T> {

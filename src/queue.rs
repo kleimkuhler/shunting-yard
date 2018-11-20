@@ -1,8 +1,8 @@
 /// A generic queue that wraps a `Vec<T>`.
 ///
-/// These methods wrap existing methods on `Vec<T>`, but limit how a queue can
-/// be used in the context of the shunting yard algorithm. The only reason
-/// this struct exists was for my own benefit of implementing.
+/// These methods wrap existing methods on `Vec<T>`. The only reason this
+/// struct exists was for my own benefit of implementing.
+#[derive(Debug, PartialEq)]
 pub struct Queue<T>(Vec<T>);
 
 impl<T> Default for Queue<T> {
@@ -12,6 +12,11 @@ impl<T> Default for Queue<T> {
 }
 
 impl<T> Queue<T> {
+    /// Create a new queue.
+    pub fn new(input: Vec<T>) -> Self {
+        Queue(input)
+    }
+
     /// Remove an element from the queue.
     ///
     /// # Panics
@@ -27,6 +32,7 @@ impl<T> Queue<T> {
         self.0.remove(0)
     }
 
+    /// Enqueue an item at the back of the queue.
     pub fn enqueue(&mut self, value: T) {
         self.0.push(value)
     }
